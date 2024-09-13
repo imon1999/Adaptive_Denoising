@@ -1,0 +1,42 @@
+import os
+import glob
+import subprocess
+import sys
+import torch
+from PIL import Image
+import torchvision.transforms as T
+
+def estimate_noise(image, device):
+    """Estimate the noise level using standard deviation."""
+    image = T.ToTensor()(image).unsqueeze(0).to(device)
+    noise_level = torch.std(image)
+    return noise_level.item()
+
+if __name__ == "__main__":
+    image_list = [filepath for filepath in glob.iglob("Input/*.png")]
+    noise_threshold = 0.25  # Set the noise threshold
+
+    path = "Output/"
+    folder_list = glob.glob(path + '*', recursive=False)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    for z, image_path in enumerate(image_list):
+        img = Image.open(image_path)
+
+        # Estimate the noise level
+        noise_level = estimate_noise(img, device)
+        print(f"Estimated noise level: {noise_level:.4f}")
+
+        if noise_level > noise_threshold:
+            script_to_run = "cut2self-ddm.py"
+        else:
+            script_to_run = "cut2self-ddm2.py"
+
+
+        print(f"Executing {script_to_run} for {image_path}")
+        subprocess.run([sys.executable, script_to_run, image_path, folder_list[z]])
+
+        # print(f"Finished processing {image_path}\n")
+
+    print("Successfully completed all the images.")
